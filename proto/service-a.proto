@@ -15,6 +15,6 @@ message RequestA {
 
 // Resposta do Service A
 message ResponseA {
-  int status = 1;
-  map<char, int> result = 2;
+  int32 status = 1;
+  map<string, int32> result = 2;
 }
