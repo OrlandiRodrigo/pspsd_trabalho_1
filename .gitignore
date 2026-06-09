@@ -141,3 +141,7 @@ dist
 vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
 .vite/
+
+hserv/gateway-p/node_modules
+hserv/service-a/node_modules
+hserv/service-b/node_modules
