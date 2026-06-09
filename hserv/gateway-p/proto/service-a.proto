@@ -1,0 +1,17 @@
+syntax = "proto3";
+
+package servicea;
+
+service ServiceA {
+  rpc ProcessA (RequestA) returns (ResponseA);
+}
+
+message RequestA {
+  string userId = 1;
+  string payload = 2;
+}
+
+message ResponseA {
+  string status = 1;
+  string result = 2;
+}

@@ -1,0 +1,20 @@
+syntax = "proto3";
+
+package servicea;
+
+// Serviço A - responsável por uma funcionalidade de backend
+service ServiceA {
+  rpc ProcessA (RequestA) returns (ResponseA);
+}
+
+// Request enviado pelo Gateway P
+message RequestA {
+  string userId = 1;
+  string payload = 2;
+}
+
+// Resposta do Service A
+message ResponseA {
+  string status = 1;
+  string result = 2;
+}
