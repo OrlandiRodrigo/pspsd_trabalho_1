@@ -47,7 +47,7 @@ int main() {
     const char* env_host_a = std::getenv("HOST_MODULO_A");
     std::string host_modulo_a = env_host_a ? env_host_a : "localhost:50051";
 
-    ClienteAutenticacao cliente_autenticacao(grpc::CreateChannel(host_modulo_a, grpc::InsecureChannelCredentials()));
+    ClienteAutenticacao cliente_autenticacao(grpc::CreateChannel(host_modulo_a, grpc::InsecureChannelCredentials())); //então esse aqui devolve um ponteiro. Pra alguma coisa.
     ClienteFuncionario cliente_funcionario(grpc::CreateChannel(host_modulo_a, grpc::InsecureChannelCredentials()));
 
     const char* env_host_b = std::getenv("HOST_MODULO_B");
