@@ -11,28 +11,57 @@ using json = nlohmann::json;
 
 #include "../../protos_gerados/autenticacao.grpc.pb.h"
 
-struct ResultadoLogin {
+struct ResultadoLogin
+{
     bool sucesso;
     std::string token;
     std::string mensagem_erro;
 };
 
-struct ResultadoCriacaoCliente {
+struct ResultadoCriacaoCliente
+{
     bool sucesso;
     int id_pessoa;
     std::string email;
     std::string mensagem_erro;
 };
 
-class ClienteAutenticacao {
+// @todo fazer esse cabra implementar o autenticacao::Service por meio de herança da abstrata;
+
+// aparentemente, basta fazer override disso aqui, segundo a documentação. Se tudo estiver certo,
+// o serviço fica exposto automaticamente..
+class authServiceImpl final : autenticacao::ServicoAutenticacao::Service
+{
+    ::grpc::Status Login(
+        ::grpc::ServerContext *context,
+        const ::autenticacao::RequisicaoLogin *request,
+        ::autenticacao::RespostaToken *response) override
+    {
+        // @todo adicionar implementação de fato
+        return ::grpc::Status::OK; // por enquanto apenas retorna ok
+    }
+
+    ::grpc::Status ValidarToken(
+        ::grpc::ServerContext *context,
+        const ::autenticacao::RequisicaoValidarToken *request,
+        ::autenticacao::RespostaValidacao *response) override
+    {
+        // @todo adicionar implementação de fato
+        return ::grpc::Status::OK; // same as line 41
+    }
+}
+
+class ClienteAutenticacao
+{
 private:
-    std::unique_ptr<autenticacao::ServicoAutenticacao::Stub> stub_autenticacao_;
+    std::unique_ptr<autenticacao::ServicoAutenticacao::Stub> stub_autenticacao_; // não entendi se esse aqui precisa ser unique_ptr pra ocasiao. Não houve transferencia de recursos ao longo do código :0
 
 public:
     explicit ClienteAutenticacao(std::shared_ptr<grpc::Channel> canal_comunicacao)
         : stub_autenticacao_(autenticacao::ServicoAutenticacao::NewStub(canal_comunicacao)) {}
 
-    autenticacao::RespostaValidacao ValidarSessaoSegura(const std::string& token_jwt) {
+    autenticacao::RespostaValidacao ValidarSessaoSegura(const std::string &token_jwt)
+    {
         autenticacao::RequisicaoValidarToken requisicao_proto;
         requisicao_proto.set_token(token_jwt);
 
@@ -41,8 +70,9 @@ public:
 
         grpc::Status status_execucao = stub_autenticacao_->ValidarToken(&contexto_rede, requisicao_proto, &resposta_proto);
 
-        if (!status_execucao.ok()) {
-            std::cout << "[gRPC ERRO REDE] ValidarToken falhou. Codigo: " << status_execucao.error_code() 
+        if (!status_execucao.ok())
+        {
+            std::cout << "[gRPC ERRO REDE] ValidarToken falhou. Codigo: " << status_execucao.error_code()
                       << " | Mensagem: " << status_execucao.error_message() << std::endl;
             autenticacao::RespostaValidacao resposta_falha;
             resposta_falha.set_e_valido(false);
@@ -53,7 +83,8 @@ public:
         return resposta_proto;
     }
 
-    ResultadoLogin FazerLoginSeguro(const std::string& email_usuario, const std::string& senha_texto_puro) {
+    ResultadoLogin FazerLoginSeguro(const std::string &email_usuario, const std::string &senha_texto_puro)
+    {
         autenticacao::RequisicaoLogin requisicao_proto;
         requisicao_proto.set_email(email_usuario);
         requisicao_proto.set_senha(senha_texto_puro);
@@ -64,20 +95,24 @@ public:
         grpc::Status status_execucao = stub_autenticacao_->Login(&contexto_rede, requisicao_proto, &resposta_proto);
 
         ResultadoLogin resultado;
-        if (status_execucao.ok()) {
+        if (status_execucao.ok())
+        {
             resultado.sucesso = true;
             resultado.token = resposta_proto.access_token();
             resultado.mensagem_erro = "";
-        } else {
+        }
+        else
+        {
             resultado.sucesso = false;
             resultado.token = "";
-            resultado.mensagem_erro = status_execucao.error_message(); 
+            resultado.mensagem_erro = status_execucao.error_message();
         }
 
         return resultado;
     }
 
-    ResultadoCriacaoCliente CriarPessoaFisica(const json& dados) {
+    ResultadoCriacaoCliente CriarPessoaFisica(const json &dados)
+    {
         autenticacao::RequisicaoCriarPessoaFisica requisicao_proto;
         requisicao_proto.set_email(dados.value("email", ""));
         requisicao_proto.set_telefone(dados.value("telefone", ""));
@@ -85,8 +120,9 @@ public:
         requisicao_proto.set_cpf(dados.value("cpf", ""));
         requisicao_proto.set_cnh(dados.value("cnh", ""));
         requisicao_proto.set_senha_texto_puro(dados.value("senha_texto_puro", ""));
-        
-        if (dados.contains("endereco")) {
+
+        if (dados.contains("endereco"))
+        {
             auto endereco_proto = requisicao_proto.mutable_endereco();
             endereco_proto->set_rua(dados["endereco"].value("rua", ""));
             endereco_proto->set_numero(dados["endereco"].value("numero", ""));
@@ -102,18 +138,22 @@ public:
         grpc::Status status_execucao = stub_autenticacao_->CriarPessoaFisica(&contexto_rede, requisicao_proto, &resposta_proto);
 
         ResultadoCriacaoCliente resultado;
-        if(status_execucao.ok()) {
+        if (status_execucao.ok())
+        {
             resultado.sucesso = true;
             resultado.id_pessoa = resposta_proto.id_pessoa();
             resultado.email = resposta_proto.email();
-        } else {
+        }
+        else
+        {
             resultado.sucesso = false;
             resultado.mensagem_erro = status_execucao.error_message();
         }
         return resultado;
     }
 
-    ResultadoLogin FazerLoginClienteSeguro(const std::string& email_usuario, const std::string& senha_texto_puro) {
+    ResultadoLogin FazerLoginClienteSeguro(const std::string &email_usuario, const std::string &senha_texto_puro)
+    {
         autenticacao::RequisicaoLogin requisicao_proto;
         requisicao_proto.set_email(email_usuario);
         requisicao_proto.set_senha(senha_texto_puro);
@@ -124,20 +164,21 @@ public:
         grpc::Status status_execucao = stub_autenticacao_->LoginCliente(&contexto_rede, requisicao_proto, &resposta_proto);
 
         ResultadoLogin resultado;
-        if (status_execucao.ok()) {
+        if (status_execucao.ok())
+        {
             resultado.sucesso = true;
             resultado.token = resposta_proto.access_token();
             resultado.mensagem_erro = "";
-        } else {
+        }
+        else
+        {
             resultado.sucesso = false;
             resultado.token = "";
-            resultado.mensagem_erro = status_execucao.error_message(); 
+            resultado.mensagem_erro = status_execucao.error_message();
         }
 
         return resultado;
-
-
     }
 };
 
-#endif 
+#endif
