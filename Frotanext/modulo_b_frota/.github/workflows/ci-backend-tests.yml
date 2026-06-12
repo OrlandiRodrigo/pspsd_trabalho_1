@@ -1,0 +1,43 @@
+name: FrotaNext - Testes de CI do Backend
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout do repositório
+        uses: actions/checkout@v4
+
+      - name: Iniciar os serviços (Docker Compose)
+        run: docker compose up -d --build
+
+      - name: Aguardar o banco de dados (Postgres) ficar pronto
+        run: |
+          echo "Aguardando o banco de dados Postgres..."
+          # Agora funciona pois adicionamos o serviço 'db' no compose
+          until docker compose exec db pg_isready -U frota_next_user -d frota_next_db -q; do
+            echo "Postgres ainda não está pronto - aguardando..."
+            sleep 2
+          done
+          echo "Postgres está pronto!"
+
+      - name: Rodar o Linter (Pylint)
+        run: |
+          echo "Rodando Pylint para análise de código..."
+          docker compose exec backend pylint src/ || true 
+
+      - name: Rodar os testes Unitários (Pytest)
+        run: docker compose exec backend pytest -v -m unit
+
+      - name: Rodar os testes de Integração (Pytest)
+        run: docker compose exec backend pytest -v -m integration
+
+      - name: Parar os contêineres (Limpeza)
+        if: always()
+        run: docker compose down

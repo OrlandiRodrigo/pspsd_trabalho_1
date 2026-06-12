@@ -1,0 +1,6 @@
+{
+    "python.analysis.extraPaths": [
+        "./modulo_b_frota/contratos_grpc",
+        "./modulo_a_auth/contratos_grpc"
+    ]
+}
