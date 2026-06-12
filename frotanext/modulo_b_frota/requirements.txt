@@ -1,0 +1,14 @@
+fastapi
+uvicorn[standard]
+SQLAlchemy
+psycopg2-binary
+ruff
+email-validator
+pytest 
+httpx
+passlib
+argon2-cffi
+python-jose[cryptography] 
+python-multipart
+pytest-mock
+pylint

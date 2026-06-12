@@ -1,0 +1,5 @@
+sudo docker-compose down -v --rmi all --remove-orphans
+
+sudo docker-compose up --build
+
+source grpc/bin/activate
