@@ -260,6 +260,59 @@ int main() {
         handler_criar_veiculo(req, res, "MOTOCICLETA"); 
     });
 
+    servidor_gateway.Delete(R"(/api/v1/veiculos(?:/[^/]+)?/(\d+))", [&](const httplib::Request& requisicao, httplib::Response& resposta) {
+        aplicar_politicas_cors(resposta);
+        std::string token_recebido = extrair_token_requisicao(requisicao);
+        if (!cliente_autenticacao.ValidarSessaoSegura(token_recebido).e_valido()) {
+            resposta.status = 401; return;
+        }
+
+        int id_veiculo = std::stoi(requisicao.matches[1]);
+        ResultadoDelecaoVeiculo resultado = cliente_frota.DeletarVeiculo(id_veiculo);
+
+        if (resultado.sucesso) {
+            resposta.status = 200;
+            resposta.set_content(json({{"mensagem", "Deletado com sucesso"}}).dump(), "application/json");
+        } else {
+            resposta.status = 400;
+            resposta.set_content(json({{"mensagem", resultado.mensagem_erro}}).dump(), "application/json");
+        }
+    });
+
+    servidor_gateway.Put(R"(/api/v1/veiculos/([^/]+)/(\d+))", [&](const httplib::Request& requisicao, httplib::Response& resposta) {
+        aplicar_politicas_cors(resposta);
+        std::string token_recebido = extrair_token_requisicao(requisicao);
+        if (!cliente_autenticacao.ValidarSessaoSegura(token_recebido).e_valido()) {
+            resposta.status = 401; return;
+        }
+
+        try {
+            std::string tipo_veiculo_url = requisicao.matches[1];
+            int id_veiculo = std::stoi(requisicao.matches[2]);
+            
+            json corpo_requisicao = json::parse(requisicao.body);
+            
+            try {
+                corpo_requisicao["tipo_veiculo"] = std::stoi(tipo_veiculo_url);
+            } catch (...) {
+                corpo_requisicao["tipo_veiculo"] = tipo_veiculo_url; 
+            }
+
+            ResultadoAtualizacaoVeiculo resultado = cliente_frota.AtualizarVeiculo(id_veiculo, corpo_requisicao);
+
+            if (resultado.sucesso) {
+                resposta.status = 200;
+                resposta.set_content(resultado.veiculo.dump(), "application/json");
+            } else {
+                resposta.status = 400;
+                resposta.set_content(json({{"mensagem", resultado.mensagem_erro}}).dump(), "application/json");
+            }
+        } catch (...) {
+            resposta.status = 400;
+            resposta.set_content(json({{"mensagem", "Formato invalido."}}).dump(), "application/json");
+        }
+    });
+
     servidor_gateway.Post("/api/v1/clientes/pessoas-fisicas", [&](const httplib::Request& requisicao, httplib::Response& resposta) {
         aplicar_politicas_cors(resposta);
 
@@ -404,6 +457,42 @@ int main() {
             resposta.status = 400;
             json erro = {{"mensagem", "Falha ao processar os dados da reserva."}};
             resposta.set_content(erro.dump(), "application/json");
+        }
+    });
+
+    servidor_gateway.Post("/api/v1/reservas/simulacao", [&](const httplib::Request& requisicao, httplib::Response& resposta) {
+        aplicar_politicas_cors(resposta);
+
+        std::string token_recebido = extrair_token_requisicao(requisicao);
+        if (token_recebido.empty()) {
+            resposta.status = 401;
+            resposta.set_content(json({{"mensagem", "Acesso negado. Token ausente."}}).dump(), "application/json");
+            return;
+        }
+
+        if (!cliente_autenticacao.ValidarSessaoSegura(token_recebido).e_valido()) {
+            resposta.status = 401;
+            resposta.set_content(json({{"mensagem", "Acesso negado. Token invalido."}}).dump(), "application/json");
+            return;
+        }
+
+        try {
+            json corpo_requisicao = json::parse(requisicao.body);
+            ResultadoSimulacaoReserva resultado = cliente_frota.SimularReserva(corpo_requisicao);
+
+            if (resultado.sucesso) {
+                resposta.status = 200; 
+                resposta.set_content(resultado.simulacao.dump(), "application/json");
+            } else {
+                resposta.status = 400;
+                resposta.set_content(json({{"mensagem", resultado.mensagem_erro}}).dump(), "application/json");
+            }
+        } catch (const json::parse_error&) {
+            resposta.status = 400;
+            resposta.set_content(json({{"mensagem", "Formato JSON invalido."}}).dump(), "application/json");
+        } catch (...) {
+            resposta.status = 500;
+            resposta.set_content(json({{"mensagem", "Erro interno ao simular reserva."}}).dump(), "application/json");
         }
     });
 

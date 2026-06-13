@@ -144,8 +144,12 @@ def converter_modelo_reserva_para_proto(reserva_db) -> frota_pb2.Reserva:
         status=status_proto,
         cliente_id=reserva_db.cliente_id,
         motorista_id=reserva_db.motorista_id or 0,
+        veiculo=converter_modelo_veiculo_para_proto(reserva_db.veiculo),
         
-        veiculo=converter_modelo_veiculo_para_proto(reserva_db.veiculo)
+        data_retirada=reserva_db.data_retirada.isoformat() if reserva_db.data_retirada else "",
+        data_devolucao=reserva_db.data_devolucao.isoformat() if reserva_db.data_devolucao else "",
+        seguro_pessoal=reserva_db.seguro_pessoal,
+        seguro_terceiros=reserva_db.seguro_terceiros
     )
 
 
@@ -260,6 +264,75 @@ class ImplementacaoServicoGestaoVeiculos(frota_pb2_grpc.ServicoGestaoVeiculosSer
                 contexto.abort(grpc.StatusCode.INVALID_ARGUMENT, "Tipo de veículo não especificado ou inválido.")
 
             return converter_modelo_veiculo_para_proto(novo_veiculo)
+
+        except grpc.RpcError:
+            raise
+        except HTTPException as http_erro:
+            contexto.abort(grpc.StatusCode.INVALID_ARGUMENT, str(http_erro.detail))
+        except Exception as e:
+            import traceback
+            traceback.print_exc()
+            contexto.abort(grpc.StatusCode.INTERNAL, f"Erro interno Python: {str(e)}")
+        finally:
+            sessao_banco_dados.close()
+
+    def DeletarVeiculo(self, requisicao: frota_pb2.RequisicaoDeletarVeiculo, contexto: grpc.ServicerContext) -> frota_pb2.RespostaDeletarVeiculo:
+        gerador_banco_dados = obter_sessao_banco()
+        sessao_banco_dados: Session = next(gerador_banco_dados)
+        try:
+            veiculo_service.deletar_veiculo(id_veiculo=requisicao.id_veiculo, sessao_banco=sessao_banco_dados)
+            return frota_pb2.RespostaDeletarVeiculo(sucesso=True, mensagem="Veículo deletado com sucesso.")
+        except grpc.RpcError:
+            raise
+        except HTTPException as http_erro:
+            contexto.abort(grpc.StatusCode.INVALID_ARGUMENT, str(http_erro.detail))
+        except Exception as e:
+            contexto.abort(grpc.StatusCode.INTERNAL, f"Erro interno Python: {str(e)}")
+        finally:
+            sessao_banco_dados.close()
+
+    def AtualizarVeiculo(self, requisicao: frota_pb2.RequisicaoAtualizarVeiculo, contexto: grpc.ServicerContext) -> frota_pb2.Veiculo:
+        gerador_banco_dados = obter_sessao_banco()
+        sessao_banco_dados: Session = next(gerador_banco_dados)
+        try:
+            cor_python = REVERSO_COR_PROTO_PARA_PYTHON.get(requisicao.cor) if requisicao.cor != frota_pb2.COR_VEICULO_NAO_ESPECIFICADA else None
+
+            dados_atualizacao = {}
+            if requisicao.placa: dados_atualizacao["placa"] = requisicao.placa
+            if requisicao.marca: dados_atualizacao["marca"] = requisicao.marca
+            if requisicao.modelo: dados_atualizacao["modelo"] = requisicao.modelo
+            if cor_python: dados_atualizacao["cor"] = cor_python
+            if requisicao.valor_diaria > 0: dados_atualizacao["valor_diaria"] = requisicao.valor_diaria
+            if requisicao.ano_fabricacao > 0: dados_atualizacao["ano_fabricacao"] = requisicao.ano_fabricacao
+            if requisicao.ano_modelo > 0: dados_atualizacao["ano_modelo"] = requisicao.ano_modelo
+            if requisicao.chassi: dados_atualizacao["chassi"] = requisicao.chassi
+            if requisicao.capacidade_tanque > 0: dados_atualizacao["capacidade_tanque"] = requisicao.capacidade_tanque
+            
+            if requisicao.tipo_veiculo == frota_pb2.TIPO_VEICULO_PASSEIO:
+                from src.schemas.veiculo_schema import SchemaPasseioUpdate
+                if requisicao.passeio.tipo_carroceria: dados_atualizacao["tipo_carroceria"] = requisicao.passeio.tipo_carroceria
+                if requisicao.passeio.qtde_portas > 0: dados_atualizacao["qtde_portas"] = requisicao.passeio.qtde_portas
+                
+                esquema_update = SchemaPasseioUpdate(**dados_atualizacao)
+                veiculo_atualizado = veiculo_service.atualizar_veiculo_passeio(requisicao.id_veiculo, esquema_update, sessao_banco_dados)
+
+            elif requisicao.tipo_veiculo == frota_pb2.TIPO_VEICULO_UTILITARIO:
+                from src.schemas.veiculo_schema import SchemaUtilitarioUpdate
+                if requisicao.utilitario.capacidade_carga_kg > 0: dados_atualizacao["capacidade_carga_kg"] = requisicao.utilitario.capacidade_carga_kg
+                
+                esquema_update = SchemaUtilitarioUpdate(**dados_atualizacao)
+                veiculo_atualizado = veiculo_service.atualizar_veiculo_utilitario(requisicao.id_veiculo, esquema_update, sessao_banco_dados)
+
+            elif requisicao.tipo_veiculo == frota_pb2.TIPO_VEICULO_MOTOCICLETA:
+                from src.schemas.veiculo_schema import SchemaMotocicletaUpdate
+                if requisicao.motocicleta.tipo_tracao: dados_atualizacao["tipo_tracao"] = requisicao.motocicleta.tipo_tracao
+                
+                esquema_update = SchemaMotocicletaUpdate(**dados_atualizacao)
+                veiculo_atualizado = veiculo_service.atualizar_veiculo_motocicleta(requisicao.id_veiculo, esquema_update, sessao_banco_dados)
+            else:
+                contexto.abort(grpc.StatusCode.INVALID_ARGUMENT, "Tipo de veículo inválido.")
+
+            return converter_modelo_veiculo_para_proto(veiculo_atualizado)
 
         except grpc.RpcError:
             raise

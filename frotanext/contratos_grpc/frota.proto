@@ -130,6 +130,40 @@ message RespostaListaVeiculos {
   repeated Veiculo veiculos = 1;
 }
 
+message RequisicaoDeletarVeiculo {
+  int32 id_veiculo = 1;
+}
+
+message RespostaDeletarVeiculo {
+  bool sucesso = 1;
+  string mensagem = 2;
+}
+
+message RequisicaoAtualizarVeiculo {
+  int32 id_veiculo = 1;
+  string placa = 2;
+  string marca = 3;
+  string modelo = 4;
+  CorVeiculo cor = 5;
+  float valor_diaria = 6;
+  int32 ano_fabricacao = 7;
+  int32 ano_modelo = 8;
+  string chassi = 9;
+  string renavam = 10;
+  float capacidade_tanque = 11;
+  bool cambio_automatico = 12;
+  bool ar_condicionado = 13;
+  string imagem_url = 14;
+  StatusVeiculo status = 15;
+  TipoVeiculo tipo_veiculo = 16; 
+
+  oneof detalhes_especificos {
+    DetalhesPasseio passeio = 17;
+    DetalhesUtilitario utilitario = 18;
+    DetalhesMotocicleta motocicleta = 19;
+  }
+}
+
 // ESTRUTURAS DE RESERVAS
 
 message RequisicaoSimularReserva {
@@ -163,11 +197,13 @@ message Reserva {
   float valor_diaria_no_momento = 3;
   float valor_total_estimado = 4;
   StatusReserva status = 5;
-  
-  // Relações
   int32 cliente_id = 6;
   int32 motorista_id = 7;
   Veiculo veiculo = 8;
+  string data_retirada = 9;
+  string data_devolucao = 10;
+  bool seguro_pessoal = 11;
+  bool seguro_terceiros = 12;
 }
 
 message RequisicaoListarMinhasReservas {
@@ -189,6 +225,8 @@ service ServicoGestaoVeiculos {
   rpc ObterVeiculo(RequisicaoObterVeiculoPorId) returns (Veiculo);
   rpc ListarVeiculos(RequisicaoListarVeiculos) returns (RespostaListaVeiculos);
   rpc CriarVeiculo(RequisicaoCriarVeiculo) returns (Veiculo);
+  rpc AtualizarVeiculo(RequisicaoAtualizarVeiculo) returns (Veiculo);
+  rpc DeletarVeiculo(RequisicaoDeletarVeiculo) returns (RespostaDeletarVeiculo);
 }
 
 service ServicoGestaoReservas {
