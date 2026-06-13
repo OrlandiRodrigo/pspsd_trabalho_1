@@ -1,0 +1,48 @@
+name: build-and-test
+
+on:
+  push:
+    branches: [ "main", "master" ]
+  pull_request:
+    branches: [ "main", "master" ]
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Criar rede Docker externa (mock)
+      run: docker network create frota-network || true
+
+    - name: Subir containers (Auth + DB)
+      run: docker compose up -d --build
+
+    - name: Aguardar o banco de dados Postgres
+      run: |
+        echo "Aguardando o banco de dados Postgres..."
+        while ! docker compose exec -T db pg_isready -U frota_next_user -d frota_next_db; do
+          echo "Postgres ainda não está pronto - aguardando..."
+          sleep 2
+        done
+        echo "Postgres está pronto!"
+
+    - name: Rodar Análise Estática (Pylint)
+      run: |
+        echo "Rodando Pylint..."
+        docker compose exec -T auth-service pylint src/
+
+    - name: Rodar Testes Unitários
+      run: |
+        echo "Rodando testes unitários..."
+        docker compose exec -T auth-service pytest -v -m unit
+
+    - name: Rodar Testes de Integração
+      run: |
+        echo "Rodando testes de integração..."
+        docker compose exec -T auth-service pytest -v -m integration
+
+    - name: Derrubar containers
+      if: always()
+      run: docker compose down -v

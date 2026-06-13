@@ -1,0 +1,39 @@
+services:
+  auth-service: 
+    build: .
+    container_name: frota_auth_service 
+    ports:
+      - "8001:8000"  
+    networks:  
+      - frota-net
+    volumes:
+      - ./src:/app/src
+                       
+    environment:
+      - DATABASE_URL=postgresql+psycopg2://frota_next_user:frota_next_pass@db:5432/frota_next_db
+      - SECRET_KEY=da59f57b85fc59b3c2aa2696f43e88c3c52b4e418a7c7274ba31be40cb117d85
+    depends_on:
+      - db  
+
+  db:
+    image: postgres:15-alpine  
+    container_name: frota_next_postgres_db
+    networks:  
+      - frota-net
+    environment:
+      - POSTGRES_USER=frota_next_user
+      - POSTGRES_PASSWORD=frota_next_pass
+      - POSTGRES_DB=frota_next_db
+    volumes:
+      - frota_next_postgres_data:/var/lib/postgresql/data  
+                                               
+    ports:
+      - "5433:5432"
+                     
+volumes:
+  frota_next_postgres_data:
+
+networks: 
+  frota-net:
+    external: true
+    name: frota-network

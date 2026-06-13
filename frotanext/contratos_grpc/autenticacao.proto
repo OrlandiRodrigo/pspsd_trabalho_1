@@ -1,0 +1,160 @@
+syntax = "proto3";
+
+package autenticacao;
+
+// ENUMERAÇÕES
+
+enum TipoPessoa {
+  TIPO_PESSOA_NAO_ESPECIFICADO = 0;
+  TIPO_PESSOA_FISICA = 1;
+  TIPO_PESSOA_JURIDICA = 2;
+}
+
+enum TipoUsuario {
+  TIPO_USUARIO_NAO_ESPECIFICADO = 0;
+  TIPO_USUARIO_FUNCIONARIO = 1;
+  TIPO_USUARIO_CLIENTE = 2;
+}
+
+// ESTRUTURAS DE DADOS BASE 
+
+message Endereco {
+  int32 id_endereco = 1;
+  string rua = 2;
+  string numero = 3;
+  string complemento = 4;
+  string bairro = 5;
+  string cidade = 6;
+  string estado = 7;
+  string cep = 8;
+}
+
+message EnderecoRequisicao {
+  string rua = 1;
+  string numero = 2;
+  string complemento = 3;
+  string bairro = 4;
+  string cidade = 5;
+  string estado = 6;
+  string cep = 7;
+}
+
+message Funcionario {
+  int32 id_funcionario = 1;
+  string email = 2;
+  string nome_completo = 3;
+  bool e_admin = 4;
+  bool e_ativado = 5;
+}
+
+message PessoaFisica {
+  int32 id_pessoa = 1;
+  string email = 2;
+  string telefone = 3;
+  string nome_completo = 4;
+  string cpf = 5;
+  string cnh = 6;
+  Endereco endereco = 7;
+}
+
+message PessoaJuridica {
+  int32 id_pessoa = 1;
+  string email = 2;
+  string telefone = 3;
+  string razao_social = 4;
+  string cnpj = 5;
+  string nome_fantasia = 6;
+  Endereco endereco = 7;
+  repeated PessoaFisica motoristas = 8;
+}
+
+// MENSAGENS DE REQUISIÇÃO 
+
+message RequisicaoCriarFuncionario {
+  string email = 1;
+  string nome_completo = 2;
+  bool e_admin = 3;
+  bool e_ativado = 4;
+  string senha_texto_puro = 5;
+}
+
+message RequisicaoCriarPessoaFisica {
+  string email = 1;
+  string telefone = 2;
+  string nome_completo = 3;
+  string cpf = 4;
+  string cnh = 5;
+  string senha_texto_puro = 6;
+  EnderecoRequisicao endereco = 7;
+}
+
+message RequisicaoCriarPessoaJuridica {
+  string email = 1;
+  string telefone = 2;
+  string razao_social = 3;
+  string cnpj = 4;
+  string nome_fantasia = 5;
+  string senha_texto_puro = 6;
+  EnderecoRequisicao endereco = 7;
+  repeated int32 motoristas_ids = 8;
+}
+
+message RequisicaoAssociarMotorista {
+  int32 id_pessoa_juridica = 1;
+  int32 id_pessoa_fisica = 2;
+}
+
+message RequisicaoObterPorId {
+  int32 identificador = 1;
+}
+
+// MENSAGENS DE AUTENTICAÇÃO E VALIDAÇÃO DE SESSÃO
+
+message RequisicaoLogin {
+  string email = 1;
+  string senha = 2;
+}
+
+message RespostaToken {
+  string access_token = 1;
+  string token_type = 2;
+}
+
+message RequisicaoValidarToken {
+  string token = 1;
+}
+
+message RespostaCriarCliente {
+  int32 id_pessoa = 1;
+  string email = 2;
+}
+
+message RespostaValidacao {
+  bool e_valido = 1;
+  string subject_payload = 2; 
+  TipoUsuario tipo_usuario = 3;
+}
+
+// SERVIÇOS gRPC 
+
+service ServicoAutenticacao {
+  rpc Login(RequisicaoLogin) returns (RespostaToken);
+  rpc LoginCliente (RequisicaoLogin) returns (RespostaToken);
+  rpc ValidarToken(RequisicaoValidarToken) returns (RespostaValidacao);
+  
+  rpc CriarPessoaFisica (RequisicaoCriarPessoaFisica) returns (RespostaCriarCliente);
+  rpc CriarPessoaJuridica (RequisicaoCriarPessoaJuridica) returns (RespostaCriarCliente);
+}
+
+service ServicoFuncionario {
+  rpc CriarFuncionario(RequisicaoCriarFuncionario) returns (Funcionario);
+  rpc ObterFuncionario(RequisicaoObterPorId) returns (Funcionario);
+}
+
+service ServicoCliente {
+  rpc CriarPessoaFisica(RequisicaoCriarPessoaFisica) returns (PessoaFisica);
+  rpc CriarPessoaJuridica(RequisicaoCriarPessoaJuridica) returns (PessoaJuridica);
+  rpc ObterPessoaFisica(RequisicaoObterPorId) returns (PessoaFisica);
+  rpc ObterPessoaJuridica(RequisicaoObterPorId) returns (PessoaJuridica);
+  rpc AssociarMotorista(RequisicaoAssociarMotorista) returns (PessoaJuridica);
+}

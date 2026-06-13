@@ -1,0 +1,13 @@
+[MAIN]
+load-plugins=pylint.extensions.docparams
+
+[MESSAGES CONTROL]
+disable=
+    missing-module-docstring,
+    missing-class-docstring,
+    missing-function-docstring,
+    C0103, 
+    R0903 
+
+[FORMAT]
+max-line-length=120

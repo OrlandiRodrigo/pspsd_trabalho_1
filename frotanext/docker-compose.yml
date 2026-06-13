@@ -1,0 +1,52 @@
+version: '3.8'
+
+services:
+
+  # MÓDULO A - Autenticação 
+  modulo_a_auth:
+    build: 
+      context: .
+      dockerfile: ./modulo_a_auth/Dockerfile
+    ports:
+      - "50051:50051"
+    environment:
+      - DATABASE_URL=sqlite:///./sql_app.db 
+      - SECRET_KEY=09d25e094faa6ca2556c818166b7a9563b93f7099f6f0f4caa6cf63b88e8d3e7
+      - ALGORITHM=HS256
+    networks:
+      - frota_rede_interna
+
+
+  # MÓDULO B - Frota e Reservas 
+  modulo_b_frota:
+    build: 
+      context: .
+      dockerfile: ./modulo_b_frota/Dockerfile
+    ports:
+      - "50052:50052"
+    environment:
+      - DATABASE_URL=sqlite:///./sql_app.db
+      - SECRET_KEY=09d25e094faa6ca2556c818166b7a9563b93f7099f6f0f4caa6cf63b88e8d3e7
+      - ALGORITHM=HS256
+    networks:
+      - frota_rede_interna
+
+  # MÓDULO P - Gateway 
+  modulo_p_gateway:
+    build: 
+      context: .
+      dockerfile: ./modulo_p_gateway/Dockerfile
+    ports:
+      - "8080:8080"
+    environment:
+      - HOST_MODULO_A=modulo_a_auth:50051
+      - HOST_MODULO_B=modulo_b_frota:50052
+    networks:
+      - frota_rede_interna
+    depends_on:
+      - modulo_a_auth
+      - modulo_b_frota
+
+networks:
+  frota_rede_interna:
+    driver: bridge
